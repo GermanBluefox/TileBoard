@@ -1913,8 +1913,7 @@ function MainController ($scope, $location) {
 
    function setNewState (key, state) {
       if(!$scope.states[key]) $scope.states[key] = state;
-
-      // Is it required? If $scope.states[key] just assigned in the previous line?
+  
       for(var k in state) $scope.states[key][k] = state[k];
    }
 
