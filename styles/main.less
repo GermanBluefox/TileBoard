@@ -127,6 +127,14 @@ body {
    background-color: #1a4957;
 }
 
+body {
+   -moz-user-select: none;
+   -ms-user-select: none;
+   -khtml-user-select: none;
+   -webkit-user-select: none;
+   -webkit-touch-callout: none;
+}
+
 .errors-container {
    position: fixed;
    bottom: 30px;
@@ -1393,6 +1401,11 @@ camera-thumbnail {
          &:active {background: rgb(15, 52, 26);}
       }
 
+      &.-night {
+         background: rgb(108, 39, 56);
+         &:active {background: rgb(63, 16, 27);}
+      }
+
       &.-disabled {
          background: #444;
          color: #aaa;
@@ -1446,6 +1459,20 @@ camera-thumbnail {
       font-size: 0.9em;
    }
 }
+
+.item-entity-colorpicker {
+   text-align: left;
+   font-size: 0.9em;
+   margin: 10px 5px 0;
+
+   input {
+      width: 15px;
+      height: 15px;
+      box-sizing: border-box;
+      margin: 0;
+      cursor: pointer;
+    }   
+ }
 
 .item-entity-sliders {
    position: absolute;
