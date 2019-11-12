@@ -2,13 +2,14 @@ App.controller('Main', ['$scope', '$location', MainController]);
 
 function MainController ($scope, $location) {
    if(!window.CONFIG) return;
-
+   
    $scope.pages = CONFIG.pages;
    $scope.TYPES = TYPES;
    $scope.FEATURES = FEATURES;
    $scope.HEADER_ITEMS = HEADER_ITEMS;
 
    $scope.activeSelect = null;
+   $scope.screensaverShown = false;
    $scope.ready = false;
 
    $scope.errors = [];
@@ -19,6 +20,7 @@ function MainController ($scope, $location) {
 
    $scope.activeCamera = null;
    $scope.activeDoorEntry = null;
+   $scope.activeIframe = null;
 
    $scope.alarmCode = null;
    $scope.activeAlarm = null;
@@ -31,6 +33,7 @@ function MainController ($scope, $location) {
    var mainStyles = {};
    var activePage = null;
    var cameraList = null;
+   var popupIframeStyles = {};
 
    $scope.entityClick = function (page, item, entity) {
       switch (item.type) {
@@ -60,6 +63,9 @@ function MainController ($scope, $location) {
          case TYPES.ALARM: return $scope.openAlarm(item, entity);
 
          case TYPES.CUSTOM: return $scope.customTileAction(item, entity);
+         case TYPES.DIMMER_SWITCH: return $scope.dimmerToggle(item, entity);
+
+         case TYPES.POPUP_IFRAME: return $scope.openPopupIframe(item, entity);
 
          case TYPES.INPUT_DATETIME: return $scope.openDatetime(item, entity);
       }
@@ -190,7 +196,7 @@ function MainController ($scope, $location) {
             var marker = encodeURIComponent("color:gray|label:"+label+"|" + coords);
 
             url = "https://maps.googleapis.com/maps/api/staticmap?center="
-                + coords + "&zoom="+zoom+"&size="+sizes+"x&maptype=roadmap&markers=" + marker;
+               + coords + "&zoom="+zoom+"&size="+sizes+"&scale=2&maptype=roadmap&markers=" + marker;
 
             if(CONFIG.googleApiKey) {
                url += "&key=" + CONFIG.googleApiKey;
@@ -454,7 +460,11 @@ function MainController ($scope, $location) {
    };
 
    $scope.entityIcon = function (item, entity) {
-      var state = entity.state;
+      var state = parseFieldValue(entity.state, item, entity);
+
+      if(!state && item.state) {
+         state = parseFieldValue(item.state, item, entity);
+      }
 
       if(item.icon) {
          state = parseFieldValue(item.icon, item, entity);
@@ -928,7 +938,29 @@ function MainController ($scope, $location) {
       }, callback);
    };
 
+   $scope.dimmerToggle = function (item, entity, callback) {
+      if(item.action) {
+         callFunction(item.action, [item, entity, callback]);
+      }
+      else if(angular.isString(item.id) && entity) {
+         $scope.toggleSwitch(item, entity, callback);
+      }
+   };
+
+   $scope.dimmerAction = function (action, $event, item, entity) {
+      $event.preventDefault();
+      $event.stopPropagation();
+
+      var func = "action" + (action === "plus" ? "Plus" : "Minus");
+
+      if(item[func]) callFunction(item[func], [item, entity, $event]);
+
+      return false;
+   };
+
    $scope.toggleLock = function (item, entity) {
+      var service;
+
       if(entity.state === "locked") service = "unlock";
       else if(entity.state === "unlocked") service = "lock";
 
@@ -943,6 +975,7 @@ function MainController ($scope, $location) {
    };
 
    $scope.toggleVacuum = function (item, entity) {
+      var service;
       if(entity.state === "off") service = "turn_on";
       else if(entity.state === "on") service = "turn_off";
       else if(['idle', 'docked', 'paused'].indexOf(entity.state) !== -1) {
@@ -1351,10 +1384,27 @@ function MainController ($scope, $location) {
       $scope.datetimeString = null;
    };
 
-   $scope.closeDoorEntry = function () {
-      $scope.activeDoorEntry = null;
+   $scope.getPopupIframeStyles = function () {
+      if(!$scope.activeIframe || !$scope.activeIframe.iframeStyles) return null;
 
-      if(doorEntryTimeout) clearTimeout(doorEntryTimeout);
+      var entity = $scope.getItemEntity($scope.activeIframe);
+
+      var styles = $scope.itemField('iframeStyles', $scope.activeIframe, entity);
+
+      if(!styles) return null;
+
+      for (var k in popupIframeStyles) delete popupIframeStyles[k];
+      for (k in styles) popupIframeStyles[k] = styles[k];
+
+      return popupIframeStyles;
+   };
+
+   $scope.openPopupIframe = function (item, entity) {
+      $scope.activeIframe = item;
+   };
+
+   $scope.closePopupIframe = function () {
+      $scope.activeIframe = null;
    };
 
    $scope.openDoorEntry = function (item, entity) {
@@ -1369,6 +1419,12 @@ function MainController ($scope, $location) {
             updateView();
          }, CONFIG.doorEntryTimeout * 1000);
       }
+   };
+
+   $scope.closeDoorEntry = function () {
+      $scope.activeDoorEntry = null;
+
+      if(doorEntryTimeout) clearTimeout(doorEntryTimeout);
    };
 
    $scope.openAlarm = function (item) {
@@ -1677,7 +1733,8 @@ function MainController ($scope, $location) {
       return {
          states: $scope.states,
          $scope: $scope,
-         parseFieldValue: parseFieldValue.bind(this)
+         parseFieldValue: parseFieldValue.bind(this),
+         apiRequest: apiRequest.bind(this),
       };
    }
 
@@ -1685,6 +1742,14 @@ function MainController ($scope, $location) {
       if(typeof func !== "function") return func;
 
       return func.apply(getContext(), args || []);
+   }
+
+   function apiRequest (data, callback) {
+      Api.send(data, function (res) {
+         updateView();
+
+         if(callback) callback(res);
+      });
    }
 
    function sendItemData (item, data, callback) {
@@ -1876,6 +1941,11 @@ function MainController ($scope, $location) {
 
    window.openPage = function (page) {
       $scope.openPage(page);
+      updateView();
+   };
+
+   window.setScreensaverShown = function (state) {
+      $scope.screensaverShown = state;
       updateView();
    };
 }
