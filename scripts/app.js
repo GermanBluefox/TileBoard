@@ -241,6 +241,7 @@ function playSound(sound) {
    audio.play();
 }
 
+// This function must support i18n (may be replace with moment.js
 function timeAgo (time) {
    time = +new Date(time);
 
@@ -261,8 +262,8 @@ function timeAgo (time) {
    ];
 
    var seconds = (+new Date() - time) / 1000,
-      token = 'ago',
-      listChoice = 1;
+       token = 'ago',
+       listChoice = 1;
 
 
    if (seconds < 0) {
@@ -277,7 +278,7 @@ function timeAgo (time) {
 
    var i = 0, format;
 
-   while (format = timeFormats[i++]) {
+   while ((format = timeFormats[i++])) {
       if (seconds < format[0]) {
          if (typeof format[2] === 'string') {
             return format[listChoice];
